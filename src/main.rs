@@ -1,6 +1,6 @@
-use core::fmt;
 use std::io::stdout;
 
+use clap::{Parser, Subcommand};
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind},
     execute,
@@ -15,6 +15,27 @@ use ratatui::{
     Frame, Terminal,
 };
 use serde::{Deserialize, Serialize};
+
+const PARSE_ERROR: &str = "Could not parse input";
+
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    #[command(subcommand)]
+    command: Option<Commands>,
+}
+
+#[derive(Subcommand, Debug)]
+enum Commands {
+    Add {
+        #[arg(short, long)]
+        question: String,
+        #[arg(short, long)]
+        choices: Vec<String>,
+        #[arg(short, long)]
+        answer: usize,
+    },
+}
 
 struct Screen {
     element: Element,
@@ -60,6 +81,9 @@ impl Element {
     }
     fn compare(&self) -> bool {
         self.answer == self.index
+    }
+    fn get(&self) -> usize {
+        self.index
     }
 }
 
@@ -112,8 +136,19 @@ fn main() -> anyhow::Result<()> {
     enable_raw_mode()?;
     execute!(stdout(), EnterAlternateScreen, EnableMouseCapture)?;
 
+    let args = Args::parse();
+    match args.command {
+        Some(Commands::Add {
+            question,
+            choices,
+            answer,
+        }) => {}
+        None => {
+            println!("{}", PARSE_ERROR);
+            std::process::exit(0);
+        }
+    }
     let mut t = Terminal::new(CrosstermBackend::new(stdout()))?;
-    let mut screen = Screen::new(vec![Choice::Start, Choice::Exit], States::Menu);
 
     let res = run(&mut t, &mut screen);
 
